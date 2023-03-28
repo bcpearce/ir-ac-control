@@ -1,6 +1,8 @@
 #ifndef _UTIL_local_H
 #define _UTIL_local_H
 
+#include <string.h>
+
 #define SYSTEM_WRAPPER(FUNC, ...) SystemWrapper(FUNC, #FUNC, __VA_ARGS__)
 
 template<class F, class... Ts>

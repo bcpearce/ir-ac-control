@@ -4,7 +4,13 @@
 #include <sstream>
 #include <iomanip>
 
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+
 #include "lirc_payload.h"
+#include "util.h"
 
 bool PulseDistanceEncoding::IsFrameStart(LircPayload a, LircPayload b) {
     return 
@@ -37,7 +43,7 @@ bool PulseDistanceEncoding::IsBitZero(LircPayload a, LircPayload b) {
 }
 
 bool PulseDistanceEncoding::IsEndRx(LircPayload a, LircPayload b) {
-    return a.GetMode() == LircMode2:Pulse && b.GetMode(LircMode2::Timeout);
+    return a.GetMode() == LircMode2::Pulse && b.GetMode() == LircMode2::Timeout;
 }
 
 LircSerializer::LircSerializer(const PulseDistanceEncoding& enc) 
@@ -48,12 +54,14 @@ void LircSerializer::Add(const LircPayload& payload) {
     case LircMode2::Frequency:
         throw std::invalid_argument("Frequency not supported.");
     case LircMode2::Timeout:
-        return;
     case LircMode2::Pulse:
     case LircMode2::Space:
         if (pPendingBit_) {
             // check for one of the various bit types
-            if (encoder_.IsFrameStart(*pPendingBit_, payload)) {
+            if (encoder_.IsEndRx(*pPendingBit_, payload)) {
+                received_ = true;
+                ResetPendingByte();
+            } else if (encoder_.IsFrameStart(*pPendingBit_, payload)) {
                 packets_.push_back({});
                 ResetPendingByte();
             } else if (packets_.size() > 0) {
@@ -74,10 +82,43 @@ void LircSerializer::Add(const LircPayload& payload) {
     }
 }
 
+std::vector<std::vector<uint8_t>> LircSerializer::WaitForRx(const char* lircDev) {
+    Clear();
+    std::array<uint32_t, 256> buf;
+    int fd{0};
+    try {
+        fd = SYSTEM_WRAPPER(open, lircDev, O_RDONLY);
+        {
+            uint32_t features{0};
+            SYSTEM_WRAPPER(ioctl, fd, LIRC_GET_FEATURES, &features);
+            if (!(features & LIRC_CAN_REC_MODE2)) {
+                throw std::runtime_error("Device does not support LIRC Mode2");
+            }
+        }
+        for (;;) {
+            ssize_t ct = SYSTEM_WRAPPER(read, fd, buf.data(), sizeof(uint32_t) * buf.size());
+            
+            for(ssize_t i = 0; i < ct / sizeof(uint32_t); ++i) {
+                auto pl = LircPayload::Decode(buf.at(i));
+                this->Add(pl);
+                if (received_) {
+                    return packets_;
+                }
+            }
+        }
+    } 
+    catch (...) {
+        close(fd);
+        throw;
+    }
+    throw std::runtime_error(std::string{"Unexpected exit from "} + std::string{__func__});
+}
+
 void LircSerializer::Clear() {
     packets_.clear(); 
     ResetPendingByte();
     pPendingBit_.reset();
+    received_ = false;
 }
 
 std::ostream& operator<<(std::ostream& _stream, const LircSerializer& _ls) {

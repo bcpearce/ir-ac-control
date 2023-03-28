@@ -31,6 +31,7 @@ public:
     LircSerializer(const PulseDistanceEncoding& enc);
     void Add(const LircPayload& payload);
     const std::vector<std::vector<uint8_t>>& Dump() const { return packets_; }
+    std::vector<std::vector<uint8_t>> WaitForRx(const char* lircDev);
     void Clear();
 
     friend std::ostream& operator<<(std::ostream& _stream, const LircSerializer& _ls);
@@ -42,6 +43,7 @@ private:
     uint8_t pendingByte_{0u};
     uint8_t bitsBuffered_{0u};
     std::unique_ptr<LircPayload> pPendingBit_;
+    bool received_{false};
 
     void ResetPendingByte();
 };

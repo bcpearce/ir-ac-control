@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.18)
 project(IR)
-add_executable(ir main.cpp lirc_payload.cpp lirc_serializer.cpp lirc_payload.h lirc_serializer.h)
+add_executable(ir main.cpp lirc_daikin.cpp lirc_payload.cpp lirc_serializer.cpp lirc_daikin.h lirc_payload.h lirc_serializer.h)
 
 set(CMAKE_BUILD_TYPE Debug)
 
