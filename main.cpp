@@ -47,10 +47,13 @@ int main(int argc, char* argv[]) {
                 std::cout << packets.at(0).size() << ", " << packets.at(1).size() << "\n";
                 LircDaikin ld(packets);
                 std::cout << ld << "\n";
-            } catch (std::exception& e) {
+            } 
+            catch (std::system_error& e) {
+                throw; // rethrow, irrecovable
+            }
+            catch (std::exception& e) {
                 std::cout << "Error: " << e.what();
             }
-            int fd = 
         }
 
         return 0;
