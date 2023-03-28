@@ -55,11 +55,15 @@ int main(int argc, char* argv[]) {
             std::cout << "Using timeout of " << timeoutUs << "us\n";
             SYSTEM_WRAPPER(ioctl, fd, LIRC_SET_REC_TIMEOUT, &timeoutUs);
         }
-        std::vector<PulseWidthId> PulseIds;
-        PulseIds.push_back({300, 600});
-        PulseIds.push_back({1000, 1500});
-        PulseIds.push_back({3000, 4000});
-        LircSerializer ls(PulseIds);
+
+        PulseDistanceEncoding encoder;
+        encoder.frameStart = {3400, 1750};
+        encoder.bitOne = {430, 1320};
+        encoder.bitZero = {430, 430};
+        encoder.tolerance = 200;
+
+        LircSerializer ls(encoder);
+
         std::cout << "Reading in a loop...\n";
         for(ssize_t j = 0;;) {
             std::array<uint32_t, 256> buf;
@@ -67,16 +71,14 @@ int main(int argc, char* argv[]) {
             
             for(ssize_t i = 0; i < ct / sizeof(uint32_t); ++i) {
                 auto pl = LircPayload::Decode(buf.at(i));
-
-                if(ls.Add(pl)) {
-                    std::cout << ls << "\n";
-                    ls = LircSerializer(PulseIds);
-                }
-
+                ls.Add(pl);
                 if (pl.GetMode() == LircMode2::Timeout) {
                     std::cout << "ElemCt: " << std::dec << j << "\n";
+                    int ct = 0;
+                    std::cout << ls << "\n";
                     std::cout << ("===========================") << "\n";
                     j = 0;
+                    ls.Clear();
                 }
                 else {
                     if (verbose) {

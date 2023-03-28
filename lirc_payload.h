@@ -33,7 +33,7 @@ public:
 private:
     LircPayload() = default;
     LircPayload(LircMode2 mode, int value);
-    LircMode2 mode_{LircMode2::Space};
+    LircMode2 mode_{LircMode2::Timeout};
     int pulseWidth_{-1};
     int frequency_{-1};
     int timeout_{-1};
