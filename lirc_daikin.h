@@ -1,6 +1,7 @@
 #ifndef _LIRC_DAIKIN_H
 #define _LIRC_DAIKIN_H
 
+#include <array>
 #include <ostream>
 #include <vector>
 
@@ -58,9 +59,9 @@ enum class Quiet : uint8_t {
 
 class LircDaikin {
 public:
-    LircDaikin(const std::vector<std::vector<uint8_t>>& frames);
-
-    friend std::ostream&  operator<<(std::ostream& _stream, LircDaikin& _ld);
+    LircDaikin() = default;
+    static LircDaikin Decode(const std::vector<std::vector<uint8_t>>& frames);
+    std::vector<std::vector<uint8_t>> Encode() const;
 
     uint8_t temperatureF_{0};
     daikin::Mode mode_ = daikin::Mode::Auto;
@@ -72,12 +73,25 @@ public:
     bool followMe_{false};
     bool quiet_{false};
 
-    bool IsValid() { return validated_; }
+    friend std::ostream&  operator<<(std::ostream& _stream, LircDaikin& _ld);
+
+    bool Validate();
+
+    uint8_t GetTemperatureF() const { return temperatureF_; }
+    void SetTemperatureF(uint8_t temperatureF) { temperatureF_ = temperatureF; };
+
+    daikin::Mode GetMode() const { return mode_; }
+    void SetMode(daikin::Mode mode) { mode_ = mode; }
 
 private:
-    static bool ValidateHeader(const std::vector<std::vector<uint8_t>>& frames);
-    static bool ValidatePayload(const std::vector<std::vector<uint8_t>>& frames);
+
+    static bool ValidateHeader(const std::vector<uint8_t>& frames);
+    static bool ValidatePayload(const std::vector<uint8_t>& frames);
+    static uint8_t CalculateChecksum(const std::vector<uint8_t>& payload);
+    static bool ValidateChecksum(const std::vector<uint8_t>& payload);
     static uint8_t CalcTemp(uint8_t rawTemp);
+    uint8_t CalcTempForSend() const;
+
     std::vector<uint8_t> header_;
     std::vector<uint8_t> raw_;
     bool validated_{false};

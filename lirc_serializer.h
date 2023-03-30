@@ -17,6 +17,7 @@ struct PulseDistanceEncoding {
     Distance frameStart;
     Distance bitOne;
     Distance bitZero;
+    int gap{35000};
     int tolerance{150};
 
     bool IsFrameStart(LircPayload a, LircPayload b);
@@ -32,6 +33,7 @@ public:
     void Add(const LircPayload& payload);
     const std::vector<std::vector<uint8_t>>& Dump() const { return packets_; }
     std::vector<std::vector<uint8_t>> WaitForRx(const char* lircDev);
+    void Tx(const char* lircDev, const std::vector<std::vector<uint8_t>>& bytes) const;
     void Clear();
 
     friend std::ostream& operator<<(std::ostream& _stream, const LircSerializer& _ls);
@@ -46,6 +48,7 @@ private:
     bool received_{false};
 
     void ResetPendingByte();
+    std::vector<uint32_t> ConvertForSysIo(const std::vector<std::vector<uint8_t>>& bytes) const;
 };
 
 std::ostream& operator<<(std::ostream& _stream, const LircSerializer& _ls);

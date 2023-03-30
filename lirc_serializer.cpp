@@ -111,7 +111,30 @@ std::vector<std::vector<uint8_t>> LircSerializer::WaitForRx(const char* lircDev)
         close(fd);
         throw;
     }
+    close(fd);
     throw std::runtime_error(std::string{"Unexpected exit from "} + std::string{__func__});
+}
+
+void LircSerializer::Tx(const char* lircDev, const std::vector<std::vector<uint8_t>>& bytes) const {
+    int fd{0};
+    try {
+        fd = SYSTEM_WRAPPER(open, lircDev, O_WRONLY);
+        {
+            uint32_t features{0};
+            SYSTEM_WRAPPER(ioctl, fd, LIRC_GET_FEATURES, &features);
+            if (!(features & LIRC_CAN_SEND_PULSE)) {
+                throw std::runtime_error("Device does not support LIRC Send Pulse");
+            }
+        }
+        auto buf = ConvertForSysIo(bytes);
+        if (buf.empty()) throw std::runtime_error("Empty buffer.");
+        SYSTEM_WRAPPER(write, fd, buf.data(), sizeof(buf.front()) * buf.size());
+    } 
+    catch (...) {
+        close(fd);
+        throw;
+    }
+    close(fd);
 }
 
 void LircSerializer::Clear() {
@@ -119,6 +142,33 @@ void LircSerializer::Clear() {
     ResetPendingByte();
     pPendingBit_.reset();
     received_ = false;
+}
+
+std::vector<uint32_t> LircSerializer::ConvertForSysIo(const std::vector<std::vector<uint8_t>>& bytes) const {
+    // I assume this should be a list of uint32_t of the times for each pulse, alternating 
+    // Pulse-Space-Pulse-Space-....-Space-Pulse, beginning and ending with pulse
+    std::vector<uint32_t> lircValues;
+    bool isNotFirstPacket = false;
+    for(const auto& packet : bytes) {
+        lircValues.push_back(encoder_.frameStart.pulse);
+        lircValues.push_back(encoder_.frameStart.space);
+
+        for(const auto& _byte : packet) {
+            for(int i = 0; i < 8; ++i) {
+                const PulseDistanceEncoding::Distance _d =
+                    (_byte & (0x1 << i)) ? encoder_.bitOne : encoder_.bitZero;
+                lircValues.push_back(_d.pulse);
+                lircValues.push_back(_d.space);
+            }
+        }
+
+        lircValues.push_back(encoder_.bitOne.pulse);
+        if (isNotFirstPacket) {
+            lircValues.push_back(encoder_.gap); // space value
+        }
+        isNotFirstPacket = true;
+    }
+    return lircValues;
 }
 
 std::ostream& operator<<(std::ostream& _stream, const LircSerializer& _ls) {
