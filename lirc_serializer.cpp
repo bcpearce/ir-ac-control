@@ -148,7 +148,6 @@ std::vector<uint32_t> LircSerializer::ConvertForSysIo(const std::vector<std::vec
     // I assume this should be a list of uint32_t of the times for each pulse, alternating 
     // Pulse-Space-Pulse-Space-....-Space-Pulse, beginning and ending with pulse
     std::vector<uint32_t> lircValues;
-    bool isNotFirstPacket = false;
     for(const auto& packet : bytes) {
         lircValues.push_back(encoder_.frameStart.pulse);
         lircValues.push_back(encoder_.frameStart.space);
@@ -161,13 +160,10 @@ std::vector<uint32_t> LircSerializer::ConvertForSysIo(const std::vector<std::vec
                 lircValues.push_back(_d.space);
             }
         }
-
         lircValues.push_back(encoder_.bitOne.pulse);
-        if (isNotFirstPacket) {
-            lircValues.push_back(encoder_.gap); // space value
-        }
-        isNotFirstPacket = true;
+        lircValues.push_back(encoder_.gap);
     }
+    lircValues.pop_back();
     return lircValues;
 }
 
