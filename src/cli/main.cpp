@@ -1,3 +1,5 @@
+#include "ir.h"
+
 #include <cstdio>
 #include <functional>
 #include <iomanip>
@@ -20,6 +22,7 @@
 
 void DisplayHelp(const std::string& lircDevRec, const std::string& lircDevSend) {
     std::cout 
+        << "Version " << IR_VERSION_MAJOR << "." << IR_VERSION_MINOR << "\n"
         << "h - Display Help\n"
         << "1 - Read from IR (" << lircDevRec << ")\n"
         << "2 - Send IR code (" << (lircDevSend != "" ? lircDevSend : "Not Available") << ")\n"

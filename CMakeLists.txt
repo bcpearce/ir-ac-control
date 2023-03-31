@@ -1,6 +1,18 @@
 cmake_minimum_required(VERSION 3.18)
-project(IR)
-add_executable(ir main.cpp lirc_daikin.cpp lirc_payload.cpp lirc_serializer.cpp lirc_daikin.h lirc_payload.h lirc_serializer.h)
+
+project(IR VERSION 0.1)
+
+add_subdirectory(${PROJECT_SOURCE_DIR}/src/common)
+list(APPEND EXTRA_LIBS common)
+list(APPEND EXTRA_INCLUDES ${PROJECT_SOURCE_DIR}/src/common)
+
+
+add_executable(ir_cli src/cli/main.cpp)
+
+configure_file(ir.h.in ir.h)
+
+target_link_libraries(ir_cli PUBLIC ${EXTRA_LIBS})
+target_include_directories(ir_cli PUBLIC "${PROJECT_BINARY_DIR}" ${EXTRA_INCLUDES})
 
 set(CMAKE_BUILD_TYPE Debug)
 

@@ -1,0 +1,1 @@
+add_library(common lirc_daikin.cpp lirc_payload.cpp lirc_serializer.cpp lirc_daikin.h)
