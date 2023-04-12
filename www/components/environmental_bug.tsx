@@ -4,9 +4,14 @@ import moment from 'moment';
 export default function EnvironmentalBug({zone, temperature_degC, humidity_pct, battery_cell_percent, battery_voltage, last_updated}) {
     return (
         <div className={styles.card}>
+            <h2>Environment</h2>
             <h3>Zone: {zone}</h3>
-            <p><b>Temperature &#8457;:</b><span className={styles.value}>{(temperature_degC * 9 / 5 + 32).toFixed(1)}</span></p>
-            <p><b>Humidity &#x25;:</b> <span className={styles.value}>{humidity_pct.toFixed(1)}</span></p>
+            { temperature_degC && 
+                <p><b>Temperature &#8457;:</b><span className={styles.value}>{(temperature_degC * 9 / 5 + 32).toFixed(1)}</span></p>
+            }
+            { humidity_pct &&
+                <p><b>Humidity &#x25;:</b> <span className={styles.value}>{humidity_pct.toFixed(1)}</span></p>
+            }
             { (battery_cell_percent && battery_voltage) &&
                 <>
                 <hr />
@@ -24,16 +29,22 @@ export default function EnvironmentalBug({zone, temperature_degC, humidity_pct, 
     );
 }
 
-export function EnvironmentalBugContainer({environmentStatus}) {
+export function EnvironmentalBugContainer(
+    {
+        zoneNames,
+        humidityPct,
+        temperatureDegC,
+        batteryCellPct,
+        batteryVoltage
+    }) {
 
-    const listBugs = Object.keys(environmentStatus).map((keyName, i) => {
+    const listBugs = Object.keys(zoneNames).map((keyName, i) => {
             return (<EnvironmentalBug 
-              zone={environmentStatus[keyName].zone}
-              temperature_degC={environmentStatus[keyName].temperature_degC}
-              humidity_pct={environmentStatus[keyName].humidity_pct}
-              battery_cell_percent={environmentStatus[keyName].battery_cell_percent}
-              battery_voltage={environmentStatus[keyName].battery_voltage}
-              last_updated={environmentStatus[keyName].last_updated}
+              zone={zoneNames[keyName]}
+              temperature_degC={temperatureDegC[keyName]}
+              humidity_pct={humidityPct[keyName]}
+              battery_cell_percent={batteryCellPct[keyName]}
+              battery_voltage={batteryVoltage[keyName]}
               key={i}/>)
           });
 

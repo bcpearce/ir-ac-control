@@ -5,55 +5,102 @@ import styles from '@/styles/Home.module.css'
 import React from 'react'
 
 import LoginBug from '../components/login_bug.tsx'
+import { AcBugContainer } from '../components/ac_bug.tsx'
 import { EnvironmentalBugContainer } from '../components/environmental_bug.tsx'
+
 import { moment } from 'moment';
 
 import * as mqtt from 'mqtt'
 
 const inter = Inter({ subsets: ['latin'] })
 
-let client = {} as mqtt.Client;
-
 export default function Home() {
+
+  const [client, setClient] = React.useState(null);
 
   const [connectionStatus, setConnectionStatus] = React.useState(false);
   const [connectionError, setConnectionError] = React.useState({} as Error);
   const [connectionBroker, setConnectionBroker] = React.useState("");
-  const [environmentStatus, setEnvironmentStatus] = React.useState({});
+  const [temperatureDegC, setTemperatureDegC] = React.useState({});
+  const [humidityPct, setHumidityPct] = React.useState({});
+  const [batteryCellPct, setBatteryCellPct] = React.useState({});
+  const [batteryVoltage, setBatteryVoltage] = React.useState({});
+  const [batteryChargeRate, setBatteryChargeRate] = React.useState({});
+  const [zoneNames, setZoneNames] = React.useState({});
+  const [acRemoteState, setAcRemoteState] = React.useState({});
 
   function ConnectClient(url, options) {
     console.log("Connecting to", url);
-    client = mqtt.connect(url, options)
+    setClient(mqtt.connect(url, options));
+    setConnectionBroker(url);
+  };
 
-    client.on('connect', () => {
-      console.log("We're In.");
-      setConnectionStatus(true);
-      setConnectionBroker(url);
-      setConnectionError({});
+  React.useEffect(() => {
+    if (client) {
+      console.log(client);
 
-      client.subscribe('$SYS/broker/clients/connected')
-      client.subscribe('environment')
-    });
+      client.on('connect', () => {
+        console.log("We're In.");
+        setConnectionStatus(true);
+        setConnectionError({});
 
-    client.on('error', (err) => {
-      console.log("Help I've fallen and I can't get up.", err);
-      DisconnectClient();
-      setConnectionError(err);
-    });
+        const topics = [
+          '$SYS/broker/clients/connected',
+          'zone/+/name', 
+          'zone/+/environment/#', 
+          'zone/+/battery/#'
+          ];
 
-    client.on('message', (topic, message) => {
-      console.log("Received message on", topic, message);
-      if (topic === 'environment') {
-        const jsonMessage = Buffer.from(message).toString('utf8')
-        const parsedData = {...JSON.parse(jsonMessage), last_updated:new Date()};
-        console.log("Incoming Data", parsedData);
-        console.log("Existing Data", environmentStatus);
-        setEnvironmentStatus(environmentStatus => {
-          return {...environmentStatus, [parsedData.zone]:parsedData };
+        topics.forEach((topic) => {
+          console.log("Subscribed to", topic);
+          client.subscribe(topic);
         });
-      }
-    });
-  }
+      });
+
+      client.on('error', (err) => {
+        console.log("Help I've fallen and I can't get up.", err);
+        DisconnectClient();
+        setConnectionError(err);
+      });
+
+      client.on('message', (topic, message) => {
+        console.log("Got message about ", topic, message);
+        const tl = topic.split("/");
+        const value = new TextDecoder().decode(message);
+        if (tl[0] === 'zone') {
+          let zone = tl[1];
+          if (tl[2] === 'name') {
+            const _name = value.trim();
+            setZoneNames(zoneNames => 
+              ({...zoneNames, [zone]:_name}));
+          }
+          if (tl[2] === 'battery') {
+            if (tl[3] === 'cellPct') {
+              setBatteryCellPct(batteryCellPct => 
+                ({...batteryCellPct, [zone]:parseFloat(value)}));
+            }
+            else if (tl[3] === 'voltage') {
+              setBatteryVoltage(batteryVoltage => 
+                ({...batteryVoltage, [zone]:parseFloat(value)}));
+            }
+            else if (tl[3] === 'chargeRate') {
+              setBatteryChargeRate(batteryChargeRate => 
+                ({...batteryChargeRate, [zone]:parseFloat(value)}));
+            }
+          }
+          if (tl[2] === 'environment') {
+            if (tl[3] === 'humidityPct') {
+              setHumidityPct(humidityPct => 
+                ({...humidityPct, [zone]:parseFloat(value)}));
+            }
+            if (tl[3] === 'temperatureDegC') {
+              setTemperatureDegC(temperatureDegC => 
+                ({...temperatureDegC, [zone]:parseFloat(value)}));
+            }
+          }
+        }
+      })
+    }}, [client]);
 
   function DisconnectClient() {
     client.end();
@@ -77,8 +124,15 @@ export default function Home() {
             connectionError={connectionError}
             connectionBroker={connectionBroker}/>
         </div>
-        <div className={styles.description}><h1 >Environments</h1></div>
-        <EnvironmentalBugContainer environmentStatus={environmentStatus}/>
+        <div className={styles.description}><h1>AC Remotes</h1></div>
+        <AcBugContainer acRemoteState={acRemoteState}/>
+        <div className={styles.description}><h1>Environments</h1></div>
+        <EnvironmentalBugContainer 
+          zoneNames={zoneNames}
+          humidityPct={humidityPct}
+          temperatureDegC={temperatureDegC}
+          batteryCellPct={batteryCellPct}
+          batteryVoltage={batteryVoltage} />
       </main>
     </>
   )

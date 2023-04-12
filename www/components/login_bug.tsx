@@ -30,9 +30,9 @@ export default function LoginBug(
             <form onSubmit={handleSubmitLogin}>
             <h2>Login: </h2>
             <p>
-                <label><b>Broker: </b><input name="broker" defaultValue="mqtt://"/></label><br />
-                <label>User Name: <input name="userName" /></label><br />
-                <label>User Key: <input name="userKey" type="password"/></label><br />
+                <label><b>Broker: </b><input name="broker" className={styles.wideInput} defaultValue="mqtt://"/></label><br />
+                <label>User Name: <input name="userName" className={styles.wideInput} /></label><br />
+                <label>User Key: <input name="userKey" className={styles.wideInput} type="password"/></label><br />
                 <button type="submit">&gt;&gt;&gt;</button>
             </p>
             </form>
