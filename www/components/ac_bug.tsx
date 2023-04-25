@@ -1,19 +1,46 @@
 import styles from '@/styles/Home.module.css'
+import switchStyle from '@/styles/switch.css'
 
-export default function AcBug({zone}) {
+export default function AcBug({zoneKey, zoneName, client}) {
+
+    const topicBase = 'zone/' + zoneKey + '/';
+    const options = {qos:2};
+
+    function PublishAcInfo(topic, value) {
+        if (client) {
+            client.publish(topic, value, options);
+            console.log("Published", value, "to", topic);
+        }
+        else {
+            console.log("No MQTT client available to send data.");
+        }
+    }
+
+    function OnSendAcTx(e) {
+        e.preventDefault();
+        console.log("Sending AC Data", e);
+        PublishAcInfo(topicBase + 'ac/data/onOff', e.target.on.checked ? "on" : "off");
+        const temperatureDegC = (parseFloat(e.target.temperature.value) - 32) * 0.5555;
+        PublishAcInfo(topicBase + 'ac/data/temperatureDegC', temperatureDegC.toString());
+        PublishAcInfo(topicBase + 'ac/data/fan', e.target.fan.value);
+        PublishAcInfo(topicBase + 'ac/data/mode', e.target.mode.value);
+        PublishAcInfo(topicBase + 'ac/tx', "tx", options);
+    }
+
     return (
         <div className={styles.card}>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"/>
             <h2>Air Conditioner</h2>
-            <h3>Zone: {zone}</h3>
-            <form>
+            <h3>Zone: {zoneName}</h3>
+            <form onSubmit={OnSendAcTx}>
             <p>
-                <label><b>On: </b>
-                    <input type="checkbox" name="on" />
+                <label><b>On/Off: </b>
+                    <input type="checkbox" name="on" value="0" id="on_off_check" />
                 </label>
+                <span className={styles.value}><input type="submit" value="  Send TX  "/></span>
             </p>
             <p>
-                <b>Temperature: </b>
+                <b>Temperature &#8457;: </b>
                 <label><input name="temperature" className={styles.narrowInput}/></label>
             </p>
             <p><b>Fan: </b><br />
@@ -39,10 +66,10 @@ export default function AcBug({zone}) {
                 </label>
                 <label>
                     <input type="radio" name="fan" value="Silent" />
-                    <i class="fa fa-moon-o"></i>&nbsp;&nbsp;
+                    <i className={"fa fa-moon-o"}></i>&nbsp;&nbsp;
                 </label>
                 <label>
-                    <input type="radio" name="fan" value="Auto" />
+                    <input type="radio" name="fan" value="Auto"/>
                     A&nbsp;&nbsp;
                 </label>
             </p>
@@ -75,12 +102,17 @@ export default function AcBug({zone}) {
     );
 }
 
-export function AcBugContainer({acRemoteState}) {
+export function AcBugContainer({acAdvert, zoneNames, client}) {
 
-    const listBugs = Object.keys(acRemoteState).map((keyName, i) => {
-            return (<AcBug
-              zone={acRemoteState[keyName].zone}
-              key={i}/>)
+    const listBugs = Object.keys(acAdvert).map((keyName, i) => {
+            return (
+                <div key={i}>
+                {acAdvert[keyName] == 1 && 
+                <AcBug 
+                    zoneKey={keyName}
+                    zoneName={zoneNames[keyName]}  
+                    client={client}/>}
+                </div>)
           });
 
     return (

@@ -2,7 +2,7 @@ import Head from 'next/head'
 import Image from 'next/image'
 import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
-import React from 'react'
+import React, {useState, useEffect} from 'react'
 
 import LoginBug from '../components/login_bug.tsx'
 import { AcBugContainer } from '../components/ac_bug.tsx'
@@ -18,16 +18,16 @@ export default function Home() {
 
   const [client, setClient] = React.useState(null);
 
-  const [connectionStatus, setConnectionStatus] = React.useState(false);
-  const [connectionError, setConnectionError] = React.useState({} as Error);
-  const [connectionBroker, setConnectionBroker] = React.useState("");
-  const [temperatureDegC, setTemperatureDegC] = React.useState({});
-  const [humidityPct, setHumidityPct] = React.useState({});
-  const [batteryCellPct, setBatteryCellPct] = React.useState({});
-  const [batteryVoltage, setBatteryVoltage] = React.useState({});
-  const [batteryChargeRate, setBatteryChargeRate] = React.useState({});
-  const [zoneNames, setZoneNames] = React.useState({});
-  const [acRemoteState, setAcRemoteState] = React.useState({});
+  const [connectionStatus, setConnectionStatus] = useState(false);
+  const [connectionError, setConnectionError] = useState({} as Error);
+  const [connectionBroker, setConnectionBroker] = useState("");
+  const [temperatureDegC, setTemperatureDegC] = useState({});
+  const [humidityPct, setHumidityPct] = useState({});
+  const [batteryCellPct, setBatteryCellPct] = useState({});
+  const [batteryVoltage, setBatteryVoltage] = useState({});
+  const [batteryChargeRate, setBatteryChargeRate] = useState({});
+  const [zoneNames, setZoneNames] = useState({});
+  const [acAdvert, setAcAdvert] = useState({});
 
   function ConnectClient(url, options) {
     console.log("Connecting to", url);
@@ -35,7 +35,7 @@ export default function Home() {
     setConnectionBroker(url);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (client) {
       console.log(client);
 
@@ -48,7 +48,8 @@ export default function Home() {
           '$SYS/broker/clients/connected',
           'zone/+/name', 
           'zone/+/environment/#', 
-          'zone/+/battery/#'
+          'zone/+/battery/#',
+          'zone/+/ac/advert'
           ];
 
         topics.forEach((topic) => {
@@ -64,43 +65,53 @@ export default function Home() {
       });
 
       client.on('message', (topic, message) => {
-        console.log("Got message about ", topic, message);
-        const tl = topic.split("/");
-        const value = new TextDecoder().decode(message);
-        if (tl[0] === 'zone') {
-          let zone = tl[1];
-          if (tl[2] === 'name') {
-            const _name = value.trim();
-            setZoneNames(zoneNames => 
-              ({...zoneNames, [zone]:_name}));
-          }
-          if (tl[2] === 'battery') {
-            if (tl[3] === 'cellPct') {
-              setBatteryCellPct(batteryCellPct => 
-                ({...batteryCellPct, [zone]:parseFloat(value)}));
-            }
-            else if (tl[3] === 'voltage') {
-              setBatteryVoltage(batteryVoltage => 
-                ({...batteryVoltage, [zone]:parseFloat(value)}));
-            }
-            else if (tl[3] === 'chargeRate') {
-              setBatteryChargeRate(batteryChargeRate => 
-                ({...batteryChargeRate, [zone]:parseFloat(value)}));
-            }
-          }
-          if (tl[2] === 'environment') {
-            if (tl[3] === 'humidityPct') {
-              setHumidityPct(humidityPct => 
-                ({...humidityPct, [zone]:parseFloat(value)}));
-            }
-            if (tl[3] === 'temperatureDegC') {
-              setTemperatureDegC(temperatureDegC => 
-                ({...temperatureDegC, [zone]:parseFloat(value)}));
-            }
-          }
-        }
+        OnMessageReceived(topic, message);
       })
     }}, [client]);
+
+  function OnMessageReceived(topic, message) {
+    console.log("Got message about ", topic, message);
+    const tl = topic.split("/");
+    const value = new TextDecoder().decode(message);
+    if (tl[0] === 'zone') {
+      let zone = tl[1];
+      if (tl[2] === 'name') {
+        const _name = value.trim();
+        setZoneNames(zoneNames => 
+          ({...zoneNames, [zone]:_name}));
+      }
+      if (tl[2] === 'battery') {
+        if (tl[3] === 'cellPct') {
+          setBatteryCellPct(batteryCellPct => 
+            ({...batteryCellPct, [zone]:parseFloat(value)}));
+        }
+        else if (tl[3] === 'voltage') {
+          setBatteryVoltage(batteryVoltage => 
+            ({...batteryVoltage, [zone]:parseFloat(value)}));
+        }
+        else if (tl[3] === 'chargeRate') {
+          setBatteryChargeRate(batteryChargeRate => 
+            ({...batteryChargeRate, [zone]:parseFloat(value)}));
+        }
+      }
+      if (tl[2] === 'environment') {
+        if (tl[3] === 'humidityPct') {
+          setHumidityPct(humidityPct => 
+            ({...humidityPct, [zone]:parseFloat(value)}));
+        }
+        if (tl[3] === 'temperatureDegC') {
+          setTemperatureDegC(temperatureDegC => 
+            ({...temperatureDegC, [zone]:parseFloat(value)}));
+        }
+      }
+      if (tl[2] == 'ac') {
+        if (tl[3] == 'advert') {
+          setAcAdvert(acAdvert =>
+            ({...acAdvert, [zone]:parseInt(value)}));
+        }
+      }
+    }
+  }
 
   function DisconnectClient() {
     client.end();
@@ -125,14 +136,19 @@ export default function Home() {
             connectionBroker={connectionBroker}/>
         </div>
         <div className={styles.description}><h1>AC Remotes</h1></div>
-        <AcBugContainer acRemoteState={acRemoteState}/>
+        <AcBugContainer 
+          acAdvert={acAdvert} 
+          zoneNames={zoneNames}
+          client={client}
+          />
         <div className={styles.description}><h1>Environments</h1></div>
         <EnvironmentalBugContainer 
           zoneNames={zoneNames}
           humidityPct={humidityPct}
           temperatureDegC={temperatureDegC}
           batteryCellPct={batteryCellPct}
-          batteryVoltage={batteryVoltage} />
+          batteryVoltage={batteryVoltage}
+          batteryChargeRate={batteryChargeRate} />
       </main>
     </>
   )
